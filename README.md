@@ -5,11 +5,9 @@ This project uses a Convolutional Neural Network (CNN) to classify Pokemon image
 ---
 
 ## 📂 Project Structure
-- `Pokemon Prediction Project.ipynb` — Main training and evaluation notebook
-- `data/` — Directory for training/testing images
-- `models/` — Directory for saved models
-- `images/` — Visual results and samples
-- `requirements.txt` — Python packages used
+- `jupyter notebook/Pokemon Prediction Project.ipynb` — Main training and evaluation notebook
+- `Training_set & Test_set/` — Directory for training/testing images
+- `Single_prediction/` — Visual results and samples
 
 ---
 
