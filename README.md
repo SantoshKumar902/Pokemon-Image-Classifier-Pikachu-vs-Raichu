@@ -13,6 +13,12 @@ This project uses a Convolutional Neural Network (CNN) to classify Pokemon image
 
 ---
 
+  ## 📂 Dataset Used
+
+  - <a href= 'https://drive.google.com/drive/folders/12C3ELobyBkDicc5BovNIRH8EljEjQ1mS?usp=sharing'>Pokemon prediction dataset</a>
+
+---
+
 ## 🛠️ Tech Stack
 - Python 
 - TensorFlow/Keras
