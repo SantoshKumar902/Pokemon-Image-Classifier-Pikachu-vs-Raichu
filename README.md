@@ -11,9 +11,13 @@ This project uses a Convolutional Neural Network (CNN) to classify Pokemon image
 
 ---
 
-  ## 📂 Dataset Used
+  ## 🧾 Dataset Used
 
   - <a href= 'https://drive.google.com/drive/folders/12C3ELobyBkDicc5BovNIRH8EljEjQ1mS?usp=sharing'>Pokemon prediction dataset</a>
+
+  ## Colab notebook
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/19PZSjXjgJ5yyJ4tvYVwJwh0XoOoDmhO2?usp=sharing)
 
 ---
 
