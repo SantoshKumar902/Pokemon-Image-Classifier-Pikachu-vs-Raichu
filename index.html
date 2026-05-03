@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokédex — Pikachu vs Raichu Classifier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --yellow: #FFD700;
+    --yellow-dark: #C9A800;
+    --red: #E62626;
+    --navy: #0D1B2A;
+    --navy-mid: #152236;
+    --navy-light: #1E3050;
+    --electric: #4FC3F7;
+    --electric-glow: #00B4FF;
+    --white: #F0F4FF;
+    --gray: #8899AA;
+    --success: #4ADE80;
+    --pixel-border: 3px solid var(--yellow);
+  }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Stars background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 85%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 90%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 95% 45%, rgba(255,255,255,0.35) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    width: 100%;
+    padding: 1.5rem 2rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-ball {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, var(--red) 50%, #fff 50%);
+    border: 3px solid #fff;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .logo-ball::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--navy);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .logo-text {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--yellow);
+    line-height: 1.6;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  }
+
+  .logo-text span {
+    display: block;
+    font-size: 7px;
+    color: var(--gray);
+  }
+
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--navy);
+    background: var(--yellow);
+    padding: 5px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Main layout ─────────────────────────────────── */
+  main {
+    width: 100%;
+    max-width: 900px;
+    padding: 2.5rem 1.5rem;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .title-block {
+    text-align: center;
+  }
+
+  .title-block h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 15px;
+    color: var(--yellow);
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+
+  .title-block p {
+    color: var(--gray);
+    font-size: 14px;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Pokedex card ──────────────────────────────────── */
+  .pokedex {
+    background: var(--navy-mid);
+    border: 2px solid rgba(255, 215, 0, 0.25);
+    border-radius: 20px;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pokedex::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--yellow), transparent);
+    opacity: 0.6;
+  }
+
+  /* ── Upload zone ─────────────────────────────────── */
+  .upload-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .panel-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--electric);
+    letter-spacing: 1px;
+    margin-bottom: 0.25rem;
+  }
+
+  .drop-zone {
+    border: 2px dashed rgba(255, 215, 0, 0.35);
+    border-radius: 14px;
+    background: rgba(255, 215, 0, 0.03);
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color: var(--yellow);
+    background: rgba(255, 215, 0, 0.06);
+  }
+
+  .drop-zone.has-image {
+    border-color: var(--electric);
+    border-style: solid;
+  }
+
+  .drop-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drop-icon svg {
+    width: 100%;
+    height: 100%;
+    opacity: 0.5;
+  }
+
+  .drop-zone .drop-text {
+    font-size: 12px;
+    color: var(--gray);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .drop-zone .drop-hint {
+    font-size: 11px;
+    color: rgba(136, 153, 170, 0.6);
+  }
+
+  #preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: absolute;
+    inset: 0;
+    padding: 12px;
+    display: none;
+    border-radius: 12px;
+  }
+
+  #file-input { display: none; }
+
+  .btn-group {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-predict {
+    flex: 1;
+    padding: 13px;
+    background: var(--yellow);
+    color: var(--navy);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 0 var(--yellow-dark);
+  }
+
+  .btn-predict:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 0 var(--yellow-dark);
+  }
+
+  .btn-predict:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 var(--yellow-dark);
+  }
+
+  .btn-predict:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 4px 0 var(--yellow-dark);
+  }
+
+  .btn-clear {
+    padding: 13px 16px;
+    background: transparent;
+    color: var(--gray);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(136, 153, 170, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-clear:hover {
+    border-color: var(--gray);
+    color: var(--white);
+  }
+
+  /* ── Result panel ─────────────────────────────────── */
+  .result-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .result-screen {
+    background: var(--navy);
+    border: 2px solid rgba(255, 215, 0, 0.15);
+    border-radius: 14px;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-screen.loading {
+    gap: 0.5rem;
+  }
+
+  .screen-idle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .screen-idle p {
+    font-size: 12px;
+    color: rgba(136, 153, 170, 0.5);
+    text-align: center;
+  }
+
+  .pokeball-idle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(230,38,38,0.2) 50%, rgba(255,255,255,0.05) 50%);
+    border: 2px solid rgba(255,255,255,0.1);
+    position: relative;
+    opacity: 0.4;
+  }
+
+  .pokeball-idle::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.15);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Result display */
+  .result-display {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    animation: fadeInUp 0.4s ease forwards;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .pokemon-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .pokemon-name.pikachu { color: var(--yellow); text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+  .pokemon-name.raichu  { color: #FF9800; text-shadow: 0 0 20px rgba(255, 152, 0, 0.5); }
+
+  .confidence-bar-wrap {
+    width: 100%;
+  }
+
+  .confidence-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--gray);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .confidence-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--yellow);
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .result-chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .result-chip.high   { background: rgba(74, 222, 128, 0.15); color: var(--success); border: 1px solid rgba(74, 222, 128, 0.3); }
+  .result-chip.medium { background: rgba(255, 215, 0, 0.12);  color: var(--yellow);  border: 1px solid rgba(255, 215, 0, 0.3); }
+  .result-chip.low    { background: rgba(230, 38, 38, 0.12);  color: #FF6B6B;        border: 1px solid rgba(230, 38, 38, 0.3); }
+
+  .pikachu-badge, .raichu-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pokemon-type {
+    font-size: 10px;
+    background: rgba(79, 195, 247, 0.12);
+    color: var(--electric);
+    border: 1px solid rgba(79, 195, 247, 0.25);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  /* Loading spinner */
+  .loader {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .pokeball-spin {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 215, 0, 0.15);
+    border-top-color: var(--yellow);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loader p {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Info strip ──────────────────────────────────── */
+  .info-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .info-card {
+    background: var(--navy-light);
+    border: 1px solid rgba(255, 215, 0, 0.1);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+  }
+
+  .info-card .ic-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gray);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .info-card .ic-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--white);
+  }
+
+  .info-card .ic-sub {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: 2px;
+  }
+
+  /* ── History ─────────────────────────────────────── */
+  .history-section {
+    background: var(--navy-mid);
+    border: 1px solid rgba(255, 215, 0, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+  }
+
+  .section-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--electric);
+    margin-bottom: 1rem;
+    letter-spacing: 0.5px;
+  }
+
+  #history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  #history-list::-webkit-scrollbar { width: 4px; }
+  #history-list::-webkit-scrollbar-track { background: transparent; }
+  #history-list::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.2); border-radius: 2px; }
+
+  .history-empty {
+    font-size: 12px;
+    color: rgba(136, 153, 170, 0.4);
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--navy);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .history-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .history-name {
+    font-weight: 700;
+    flex: 1;
+  }
+
+  .history-name.pikachu { color: var(--yellow); }
+  .history-name.raichu  { color: #FF9800; }
+
+  .history-conf {
+    font-size: 11px;
+    color: var(--gray);
+  }
+
+  .history-time {
+    font-size: 10px;
+    color: rgba(136, 153, 170, 0.5);
+  }
+
+  footer {
+    margin-top: auto;
+    padding: 1.5rem 2rem;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(136, 153, 170, 0.35);
+    position: relative;
+    z-index: 1;
+  }
+
+  footer span {
+    color: rgba(255, 215, 0, 0.5);
+  }
+
+  /* ── Responsive ──────────────────────────────────── */
+  @media (max-width: 640px) {
+    .pokedex { grid-template-columns: 1fr; }
+    .info-strip { grid-template-columns: 1fr 1fr; }
+    .title-block h1 { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-ball"></div>
+    <div class="logo-text">
+      POKÉDEX AI
+      <span>Image Classifier v1.0</span>
+    </div>
+  </div>
+  <div class="badge">CNN Model</div>
+</header>
+
+<main>
+  <div class="title-block">
+    <h1>PIKACHU vs RAICHU<br>CLASSIFIER</h1>
+    <p>Upload a Pokémon image and let the neural network decide!</p>
+  </div>
+
+  <!-- Main Pokedex Panel -->
+  <div class="pokedex">
+
+    <!-- Upload Side -->
+    <div class="upload-panel">
+      <div class="panel-label">// INPUT IMAGE</div>
+
+      <div class="drop-zone" id="drop-zone">
+        <img id="preview-img" src="" alt="Preview">
+        <div class="drop-icon" id="drop-icon">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="10" width="36" height="28" rx="4" stroke="#FFD700" stroke-width="2"/>
+            <circle cx="24" cy="24" r="8" stroke="#FFD700" stroke-width="2"/>
+            <circle cx="24" cy="24" r="3" fill="#FFD700"/>
+            <line x1="24" y1="10" x2="24" y2="4" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="4" x2="20" y2="8" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="4" x2="28" y2="8" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="drop-text" id="drop-text">Drop your image here<br>or click to browse</p>
+        <p class="drop-hint" id="drop-hint">Supports JPG, PNG, WEBP</p>
+        <input type="file" id="file-input" accept="image/*">
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-predict" id="predict-btn" disabled>ANALYZE</button>
+        <button class="btn-clear" id="clear-btn">Clear</button>
+      </div>
+    </div>
+
+    <!-- Result Side -->
+    <div class="result-panel">
+      <div class="panel-label">// PREDICTION RESULT</div>
+
+      <div class="result-screen" id="result-screen">
+        <!-- Idle state -->
+        <div class="screen-idle" id="screen-idle">
+          <div class="pokeball-idle"></div>
+          <p>Upload an image and<br>press ANALYZE to begin</p>
+        </div>
+
+        <!-- Loader -->
+        <div class="loader" id="loader">
+          <div class="pokeball-spin"></div>
+          <p>SCANNING...</p>
+        </div>
+
+        <!-- Result -->
+        <div class="result-display" id="result-display">
+          <div>
+            <p style="font-size: 10px; color: var(--gray); text-align: center; margin-bottom: 6px;">DETECTED POKÉMON</p>
+            <div class="pokemon-name" id="pokemon-name">—</div>
+          </div>
+
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="pokemon-type">⚡ Electric</div>
+            <div class="result-chip" id="conf-chip"></div>
+          </div>
+
+          <div class="confidence-bar-wrap">
+            <div class="confidence-label">
+              <span>Confidence</span>
+              <span id="conf-pct">—</span>
+            </div>
+            <div class="confidence-track">
+              <div class="confidence-fill" id="conf-fill"></div>
+            </div>
+          </div>
+
+          <p id="result-note" style="font-size: 11px; color: var(--gray); text-align: center;"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Strip -->
+  <div class="info-strip">
+    <div class="info-card">
+      <div class="ic-label">Model</div>
+      <div class="ic-value">CNN</div>
+      <div class="ic-sub">TensorFlow / Keras</div>
+    </div>
+    <div class="info-card">
+      <div class="ic-label">Epochs Trained</div>
+      <div class="ic-value">25</div>
+      <div class="ic-sub">Binary Classifier</div>
+    </div>
+    <div class="info-card">
+      <div class="ic-label">Input Size</div>
+      <div class="ic-value">64×64</div>
+      <div class="ic-sub">RGB Image</div>
+    </div>
+  </div>
+
+  <!-- Prediction History -->
+  <div class="history-section">
+    <div class="section-title">// SCAN HISTORY</div>
+    <div id="history-list">
+      <div class="history-empty" id="history-empty">No predictions yet. Start scanning!</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built by <span>Santosh Kumar</span> &nbsp;·&nbsp; B.Tech CSE Final Year Project &nbsp;·&nbsp; Mangalayatan University, Aligarh
+</footer>
+
+<script>
+  // ─── Config ──────────────────────────────────────────────────────────
+  // Change this URL to match your Flask server address
+  const API_URL = 'http://127.0.0.1:5000/predict';
+
+  // ─── State ───────────────────────────────────────────────────────────
+  let currentFile = null;
+  let history = [];
+
+  // ─── DOM refs ────────────────────────────────────────────────────────
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const previewImg  = document.getElementById('preview-img');
+  const dropIcon    = document.getElementById('drop-icon');
+  const dropText    = document.getElementById('drop-text');
+  const dropHint    = document.getElementById('drop-hint');
+  const predictBtn  = document.getElementById('predict-btn');
+  const clearBtn    = document.getElementById('clear-btn');
+
+  const screenIdle   = document.getElementById('screen-idle');
+  const loaderEl     = document.getElementById('loader');
+  const resultDisplay = document.getElementById('result-display');
+
+  const pokemonName  = document.getElementById('pokemon-name');
+  const confFill     = document.getElementById('conf-fill');
+  const confPct      = document.getElementById('conf-pct');
+  const confChip     = document.getElementById('conf-chip');
+  const resultNote   = document.getElementById('result-note');
+
+  // ─── File handling ───────────────────────────────────────────────────
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragging');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragging');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) loadFile(f);
+  });
+
+  function loadFile(file) {
+    currentFile = file;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      previewImg.src = ev.target.result;
+      previewImg.style.display = 'block';
+      dropIcon.style.display = 'none';
+      dropText.style.display = 'none';
+      dropHint.style.display = 'none';
+      dropZone.classList.add('has-image');
+    };
+    reader.readAsDataURL(file);
+    predictBtn.disabled = false;
+    resetResult();
+  }
+
+  clearBtn.addEventListener('click', () => {
+    currentFile = null;
+    fileInput.value = '';
+    previewImg.src = '';
+    previewImg.style.display = 'none';
+    dropIcon.style.display = 'flex';
+    dropText.style.display = 'block';
+    dropHint.style.display = 'block';
+    dropZone.classList.remove('has-image');
+    predictBtn.disabled = true;
+    resetResult();
+  });
+
+  // ─── Prediction ──────────────────────────────────────────────────────
+  predictBtn.addEventListener('click', predict);
+
+  async function predict() {
+    if (!currentFile) return;
+
+    setLoading(true);
+
+    const formData = new FormData();
+    formData.append('file', currentFile);
+
+    try {
+      const res = await fetch(API_URL, { method: 'POST', body: formData });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+      const data = await res.json();
+      // Expected response: { prediction: "Pikachu" | "Raichu", confidence: 0.95 }
+      showResult(data.prediction, data.confidence);
+    } catch (err) {
+      // DEMO mode: simulate result when no backend
+      console.warn('Backend not connected. Running in demo mode.', err);
+      const demoResult = Math.random() > 0.5 ? 'Pikachu' : 'Raichu';
+      const demoConf   = 0.7 + Math.random() * 0.29;
+      showResult(demoResult, demoConf, true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(on) {
+    if (on) {
+      screenIdle.style.display = 'none';
+      loaderEl.style.display = 'flex';
+      resultDisplay.style.display = 'none';
+      predictBtn.disabled = true;
+    } else {
+      loaderEl.style.display = 'none';
+      predictBtn.disabled = false;
+    }
+  }
+
+  function showResult(name, confidence, isDemo = false) {
+    const pct = Math.round(confidence * 100);
+    const cls = name.toLowerCase();
+
+    pokemonName.textContent = name.toUpperCase();
+    pokemonName.className = `pokemon-name ${cls}`;
+
+    confPct.textContent = `${pct}%`;
+
+    // Confidence chip
+    if (pct >= 85) {
+      confChip.textContent = 'High confidence';
+      confChip.className = 'result-chip high';
+    } else if (pct >= 60) {
+      confChip.textContent = 'Medium confidence';
+      confChip.className = 'result-chip medium';
+    } else {
+      confChip.textContent = 'Low confidence';
+      confChip.className = 'result-chip low';
+    }
+
+    resultNote.textContent = isDemo
+      ? '⚠️ Demo mode — connect Flask backend for real predictions'
+      : `Model is ${pct}% sure this is ${name}`;
+
+    resultDisplay.style.display = 'flex';
+
+    // Animate bar after paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { confFill.style.width = `${pct}%`; });
+    });
+
+    addHistory(name, pct, cls);
+  }
+
+  function resetResult() {
+    screenIdle.style.display = 'flex';
+    loaderEl.style.display = 'none';
+    resultDisplay.style.display = 'none';
+    confFill.style.width = '0%';
+  }
+
+  // ─── History ─────────────────────────────────────────────────────────
+  function addHistory(name, pct, cls) {
+    const imgSrc = previewImg.src;
+    const time   = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    history.unshift({ name, pct, cls, imgSrc, time });
+    if (history.length > 5) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list  = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+
+    if (history.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = history.map(h => `
+      <div class="history-item">
+        <img class="history-thumb" src="${h.imgSrc}" alt="">
+        <span class="history-name ${h.cls}">${h.name}</span>
+        <span class="history-conf">${h.pct}%</span>
+        <span class="history-time">${h.time}</span>
+      </div>
+    `).join('');
+  }
+</script>
+</body>
+</html>
